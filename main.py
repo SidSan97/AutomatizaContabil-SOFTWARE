@@ -9,6 +9,9 @@ import requests
 from tkinterdnd2 import TkinterDnD, DND_FILES
 import json
 
+idUser = 0
+logado = False
+
 def drop(event):
     # Obter o caminho do arquivo arrastado
     caminho_arquivo = event.data
@@ -84,13 +87,14 @@ def criarDiretorios(caminho_arquivo):
         label.config(text='')
 
 def enviarPDF(caminho_arquivo):
+    global idUser
     url = "http://localhost/envioDocumento/backend/public/api/enviar-documento"
 
     try:
         with open(caminho_arquivo, 'rb') as file:
             files = {'file': file}
             data = {
-                'id': 1,
+                'id': idUser,
             }
 
             response = requests.post(url, files=files, data=data)
@@ -109,10 +113,10 @@ def enviarPDF(caminho_arquivo):
                 messagebox.showinfo("Sucesso", "Arquivo enviado com sucesso!")
                 print(f"Resposta da API: {response_text}")
             else:
-                messagebox.showerror("Erro", f"Erro ao enviar o arquivo. {error_msg}")
+                messagebox.showerror("Erro", f"Erro ao enviar o arquivo. {error_msg} \n Entre em contato com o número: (31) 8915-9131")
                 print(f"Erro ao enviar o arquivo. Status Code: {response.status_code}")
     except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao enviar o arquivo: {e}")
+        messagebox.showerror("Erro", f"Erro ao enviar o arquivo: {e} \n Entre em contato com o número: (31) 8915-9131")
         print(f"Erro ao enviar o arquivo: {e}")
 
 def abrir_pasta():
@@ -126,35 +130,95 @@ def abrir_pasta():
     
     subprocess.Popen(f'explorer {os.path.realpath(diretorio_para_abrir)}')
 
-def login():
-    #Criação dos labels e campos
-    lbl1 = Label(janela, text='Quantidade de páginas', anchor='center')
-    lbl1.place(x=70, y=120)
-    ent1 = Entry(justify='center')
-    ent1.place(x=200, y=120)
-    lbl1.configure(bg='#cf9416')
+def formLogin():
+    global janela, email, password, emailLabel, passwordLabel, botao_avancar
+
+    emailLabel = Label(janela, text='Email:', anchor='center')
+    emailLabel.place(x=70, y=120)
+    email = Entry(justify='left')
+    email.place(x=200, y=120)
+    emailLabel.configure(bg='#cf9416')
+
+    passwordLabel = Label(janela, text='Senha:', anchor='center')
+    passwordLabel.place(x=70, y=150)
+    password = Entry(justify='left', show='*')
+    password.place(x=200, y=150)
+    passwordLabel.configure(bg='#cf9416')
+
+    def validarLogin():
+        url = "http://localhost/envioDocumento/backend/public/api/login"
+        global idUser, logado
+
+        data ={
+            'email': email.get(),
+            'password': password.get()
+        }
+
+        response = requests.post(url, data=data)
+
+        try:
+            try:
+                response_json = response.json()
+                if 'message' in response_json:
+                    error_msg = response_json['message']
+                else:
+                    response_text = json.dumps(response_json, ensure_ascii=False, indent=4)
+            except ValueError:
+                response_text = response.text
+                
+            if response.status_code == 200:
+                logado = True
+                idUser = response_json['user']['id']
+                messagebox.showinfo("Sucesso", "Login efetuado com sucesso!")
+                print(f"Resposta da API: {response_text}")
+                atualizar_interface()
+            else:
+                logado = False
+                messagebox.showerror("Erro", f"{error_msg}")
+        except Exception as e:
+            logado = False
+            messagebox.showerror("Erro", f"Não foi possível efetuar o login: {e} \n Entre em contato com o número: (31) 8915-9131")
+            print(f"Erro {e}")
+    
+    botao_avancar = tk.Button(janela, text="Avançar", command=validarLogin)
+    botao_avancar.place(x=200, y=180)
+    global idUser
+   
+def atualizar_interface():
+    global emailLabel, email, passwordLabel, password, botao_avancar
+
+    if logado:
+        # Remover campos de login
+        emailLabel.place_forget()
+        email.place_forget()
+        passwordLabel.place_forget()
+        password.place_forget()
+        botao_avancar.place_forget()
+    
+        # Criar um botão para selecionar o arquivo e converter
+        botao_selecionar = tk.Button(janela, text="Selecionar PDF", command=selecionarPdf)
+        botao_selecionar.pack(pady=20)
+
+        global label
+        label = tk.Label(janela, text="Nenhum arquivo selecionado")
+        label.pack(pady=20)
+
+        label = tk.Label(janela, text="Ou arraste um arquivo aqui")
+        label.pack(pady=20)
+
+        janela.drop_target_register(DND_FILES)
+        janela.dnd_bind('<<Drop>>', drop)
+
+        botao_abrir_pasta = tk.Button(janela, text="Abrir Pasta", command=abrir_pasta)
+        botao_abrir_pasta.pack(pady=20)
 
 #janela = tk.Tk()
 janela = TkinterDnD.Tk()
 janela.title("Submissão de PDFs")
 janela.geometry("400x300")
 janela.resizable(height=False, width=False)
+logado = FALSE
 
-# Criar um botão para selecionar o arquivo e converter
-botao_converter = tk.Button(janela, text="Selecionar PDF", command=selecionarPdf)
-botao_converter.pack(pady=20)
-
-label = tk.Label(janela, text="Nenhum arquivo selecionado")
-label.pack(pady=20)
-
-label = tk.Label(janela, text="Ou arraste um arquivo aqui")
-label.pack(pady=20)
-
-janela.drop_target_register(DND_FILES)
-janela.dnd_bind('<<Drop>>', drop)
-
-botao_abrir_pasta = tk.Button(janela, text="Abrir Pasta", command=abrir_pasta)
-botao_abrir_pasta.pack(pady=20)
-#login()
+formLogin()
 
 janela.mainloop()
