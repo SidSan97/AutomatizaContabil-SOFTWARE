@@ -8,23 +8,24 @@ import os
 import requests
 from tkinterdnd2 import TkinterDnD, DND_FILES
 import json
+import tempfile
 
 idUser = 0
 logado = False
 
 def drop(event):
-    # Obter o caminho do arquivo arrastado
-    """caminhos_arquivos = event.data.split()  # Dividir a string para obter a lista de arquivos
-    arquivos = [caminho for caminho in caminhos_arquivos]"""
-    caminho_arquivo = event.data
-    label.config(text=f"Arquivo selecionado: {caminho_arquivo}")
-
-    extensao = os.path.splitext(caminho_arquivo)[1]
-    if extensao.lower() != ".pdf":
-        messagebox.showerror("Erro", "Por favor, selecione um arquivo PDF.")
-        return
-
-    criarDiretorios(caminho_arquivo)
+    # Obter o caminho dos arquivos arrastados
+    caminhos_arquivos = event.data.split()  # Dividir a string para obter a lista de arquivos
+    arquivos = [caminho for caminho in caminhos_arquivos]
+    
+    # Verificar se todos os arquivos são PDFs
+    for caminho_arquivo in arquivos:
+        extensao = os.path.splitext(caminho_arquivo)[1]
+        if extensao.lower() != ".pdf":
+            messagebox.showerror("Erro", "Por favor, selecione apenas arquivos PDF.")
+            return
+    
+    criarDiretorios(arquivos)
 
 def selecionar_arquivo():
     caminhos_arquivos = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
@@ -88,7 +89,6 @@ def criarDiretorios(caminhos_arquivos):
 def enviarPDF(caminhos_arquivos):
     global idUser
     url = "http://localhost/envioDocumento/backend/public/api/enviar-documento"
-    print(caminhos_arquivos)
     
     # Criar uma lista de arquivos para enviar
     files = [('files[]', (os.path.basename(caminho_arquivo), open(caminho_arquivo, 'rb'))) for caminho_arquivo in caminhos_arquivos]
@@ -217,7 +217,6 @@ def atualizar_interface():
         botao_abrir_pasta = tk.Button(janela, text="Abrir Pasta", command=abrir_pasta)
         botao_abrir_pasta.pack(pady=20)
 
-#janela = tk.Tk()
 janela = TkinterDnD.Tk()
 janela.title("Submissão de PDFs")
 janela.geometry("400x300")
