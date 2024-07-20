@@ -14,6 +14,8 @@ logado = False
 
 def drop(event):
     # Obter o caminho do arquivo arrastado
+    """caminhos_arquivos = event.data.split()  # Dividir a string para obter a lista de arquivos
+    arquivos = [caminho for caminho in caminhos_arquivos]"""
     caminho_arquivo = event.data
     label.config(text=f"Arquivo selecionado: {caminho_arquivo}")
 
@@ -25,29 +27,23 @@ def drop(event):
     criarDiretorios(caminho_arquivo)
 
 def selecionar_arquivo():
-    caminho_arquivo = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-    if caminho_arquivo:
-        label.config(text=f"Arquivo selecionado: {caminho_arquivo}")
-        return caminho_arquivo
+    caminhos_arquivos = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
+    if caminhos_arquivos:
+        label.config(text=f"Arquivo selecionado: {caminhos_arquivos}")
+        return caminhos_arquivos
     else:
         label.config(text="Nenhum arquivo selecionado")
         return None
     
 def selecionarPdf():
-    caminho_arquivo = selecionar_arquivo()
-    if not caminho_arquivo:
+    caminhos_arquivos = selecionar_arquivo()
+    if not caminhos_arquivos:
         return
     
-    # Verificar se a extensão do arquivo é .pdf
-    extensao = os.path.splitext(caminho_arquivo)[1]
-    if extensao.lower() != ".pdf":
-        messagebox.showerror("Erro", "Por favor, selecione um arquivo PDF.")
-        return
-    
-    criarDiretorios(caminho_arquivo)
+    criarDiretorios(caminhos_arquivos)
 
-def criarDiretorios(caminho_arquivo):
-    label.config(text="Enviando arquivo. Aguarde...")
+def criarDiretorios(caminhos_arquivos):
+    label.config(text="Enviando arquivos. Aguarde...")
 
     # Determinar o diretório onde o script Python está localizado
     diretorio_atual = os.path.dirname(os.path.abspath(__file__))
@@ -74,50 +70,59 @@ def criarDiretorios(caminho_arquivo):
     if not os.path.exists(pasta_mes):
         os.makedirs(pasta_mes)
 
-    # Caminho do arquivo de destino na pasta mes
-    nome_arquivo = os.path.basename(caminho_arquivo)
-    caminho_destino = os.path.join(pasta_mes, nome_arquivo)
+    for caminho_arquivo in caminhos_arquivos:
+        # Caminho do arquivo de destino na pasta mes
+        nome_arquivo = os.path.basename(caminho_arquivo)
+        caminho_destino = os.path.join(pasta_mes, nome_arquivo)
+
+        try:
+            shutil.copy(caminho_arquivo, caminho_destino)
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar o arquivo: {e}")
 
     try:
-        shutil.copy(caminho_arquivo, caminho_destino)
-        enviarPDF(caminho_destino)
-    except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao salvar o arquivo: {e}")
+        enviarPDF(caminhos_arquivos)
     finally:
         label.config(text='')
 
-def enviarPDF(caminho_arquivo):
+def enviarPDF(caminhos_arquivos):
     global idUser
     url = "http://localhost/envioDocumento/backend/public/api/enviar-documento"
+    print(caminhos_arquivos)
+    
+    # Criar uma lista de arquivos para enviar
+    files = [('files[]', (os.path.basename(caminho_arquivo), open(caminho_arquivo, 'rb'))) for caminho_arquivo in caminhos_arquivos]
+    data = {
+        'id': idUser,
+    }
 
     try:
-        with open(caminho_arquivo, 'rb') as file:
-            files = {'file': file}
-            data = {
-                'id': idUser,
-            }
+        response = requests.post(url, files=files, data=data)
 
-            response = requests.post(url, files=files, data=data)
-
-            # Verificar se a resposta está em JSON
-            try:
-                response_json = response.json()
-                if 'error' in response_json:
-                    error_msg = response_json['error']
-                else:
-                    response_text = json.dumps(response_json, ensure_ascii=False, indent=4)
-            except ValueError:
-                response_text = response.text
-
-            if response.status_code == 200:
-                messagebox.showinfo("Sucesso", "Arquivo enviado com sucesso!")
-                print(f"Resposta da API: {response_text}")
+        # Verificar se a resposta está em JSON
+        try:
+            response_json = response.json()
+            if 'error' in response_json:
+                error_msg = response_json['error']
+                messagebox.showerror("Erro", f"Erro ao enviar os arquivos. {error_msg} \n Entre em contato com o número: (31) 98915-9131")
             else:
-                messagebox.showerror("Erro", f"Erro ao enviar o arquivo. {error_msg} \n Entre em contato com o número: (31) 8915-9131")
-                print(f"Erro ao enviar o arquivo. Status Code: {response.status_code}")
+                response_text = json.dumps(response_json, ensure_ascii=False, indent=4)
+                if response.status_code == 200:
+                    messagebox.showinfo("Sucesso", "Arquivos enviados com sucesso!")
+                    print(f"Resposta da API: {response_text}")
+                elif response.status_code == 207:
+                    error_msg = response_json['erros']['erro']
+                    messagebox.showwarning("Alerta", f"Alguns não foram enviados: \n {error_msg}")
+                    print(f"Resposta da API: {response_text}")
+                else:
+                    messagebox.showerror("Erro", f"Erro ao enviar os arquivos. {error_msg} \n Entre em contato com o número: (31) 98915-9131")
+                    print(f"Erro ao enviar os arquivos. Status Code: {response.status_code}")
+        except ValueError:
+            response_text = response.text
+            print(f"Erro ao enviar os arquivos. Resposta da API não é um JSON. {response_text}")
     except Exception as e:
-        messagebox.showerror("Erro", f"Erro ao enviar o arquivo: {e} \n Entre em contato com o número: (31) 8915-9131")
-        print(f"Erro ao enviar o arquivo: {e}")
+        messagebox.showerror("Erro", f"Erro ao enviar os arquivos: {e} \n Entre em contato com o número: (31) 98915-9131")
+        print(f"Erro ao enviar os arquivos: {e}")
 
 def abrir_pasta():
     diretorio_atual = os.getcwd()
