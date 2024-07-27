@@ -41,7 +41,7 @@ def selecionarPdf():
     if not caminhos_arquivos:
         return
     
-    criarDiretorios(caminhos_arquivos)
+    #criarDiretorios(caminhos_arquivos)
 
 def criarDiretorios(caminhos_arquivos):
     label.config(text="Enviando arquivos. Aguarde...")
@@ -188,6 +188,10 @@ def formLogin():
     botao_avancar = tk.Button(janela, text="Avançar", command=validarLogin)
     botao_avancar.place(x=200, y=180)
     global idUser
+
+def enviar():
+    global caminho_arquivos
+    print
    
 def atualizar_interface():
     global emailLabel, email, passwordLabel, password, botao_avancar
@@ -214,12 +218,25 @@ def atualizar_interface():
         janela.drop_target_register(DND_FILES)
         janela.dnd_bind('<<Drop>>', drop)
 
+        label = tk.Label(janela, text="Escolha o departamento dos documentos")
+        label.pack(pady=20)
+        departamento = StringVar()
+        departamento.set( "" )
+        dep_menu = OptionMenu(janela, departamento, "FISCAL", "CONTABÍL", "PESSOAL", "SOCIETÁRIO")
+        dep_menu.place(x=160, y=250)
+
+        botao_enviar_pdf = tk.Button(janela, text="ENVIAR", command=enviar)
+        botao_enviar_pdf.pack(pady=20)
+        botao_enviar_pdf.place(x=160, y=300)
+        botao_enviar_pdf.configure(bg='#2771d8')
+
         botao_abrir_pasta = tk.Button(janela, text="Abrir Pasta", command=abrir_pasta)
         botao_abrir_pasta.pack(pady=20)
+        botao_abrir_pasta.place(x=160, y=350)
 
 janela = TkinterDnD.Tk()
 janela.title("Submissão de PDFs")
-janela.geometry("400x300")
+janela.geometry("400x380")
 janela.resizable(height=False, width=False)
 logado = FALSE
 
