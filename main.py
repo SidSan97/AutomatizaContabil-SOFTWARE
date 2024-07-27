@@ -12,10 +12,17 @@ import tempfile
 
 idUser = 0
 logado = False
+arquivosUpload = None
 
 def drop(event):
+    global arquivosUpload
+
     # Obter o caminho dos arquivos arrastados
     caminhos_arquivos = event.data.split()  # Dividir a string para obter a lista de arquivos
+
+    if caminhos_arquivos:
+        label.config(text=f"Arquivo selecionado: {caminhos_arquivos}")
+    
     arquivos = [caminho for caminho in caminhos_arquivos]
     
     # Verificar se todos os arquivos são PDFs
@@ -25,7 +32,7 @@ def drop(event):
             messagebox.showerror("Erro", "Por favor, selecione apenas arquivos PDF.")
             return
     
-    criarDiretorios(arquivos)
+    arquivosUpload = caminhos_arquivos
 
 def selecionar_arquivo():
     caminhos_arquivos = filedialog.askopenfilenames(filetypes=[("PDF files", "*.pdf")])
@@ -37,13 +44,15 @@ def selecionar_arquivo():
         return None
     
 def selecionarPdf():
+    global arquivosUpload
+
     caminhos_arquivos = selecionar_arquivo()
     if not caminhos_arquivos:
         return
     
-    #criarDiretorios(caminhos_arquivos)
+    arquivosUpload = caminhos_arquivos
 
-def criarDiretorios(caminhos_arquivos):
+def criarDiretorios(caminhos_arquivos, departamento):
     label.config(text="Enviando arquivos. Aguarde...")
 
     # Determinar o diretório onde o script Python está localizado
@@ -55,13 +64,13 @@ def criarDiretorios(caminhos_arquivos):
         os.makedirs(pasta_cliente)
 
     # Dentro da pasta CLIENTE, criar a pasta "fiscal" se não existir
-    pasta_fiscal = os.path.join(pasta_cliente, "fiscal")
-    if not os.path.exists(pasta_fiscal):
-        os.makedirs(pasta_fiscal)
+    pasta_departamento = os.path.join(pasta_cliente, departamento)
+    if not os.path.exists(pasta_departamento):
+        os.makedirs(pasta_departamento)
 
     # Determinar o ano corrente
     ano_corrente = datetime.now().year
-    pasta_ano = os.path.join(pasta_fiscal, str(ano_corrente))
+    pasta_ano = os.path.join(pasta_departamento, str(ano_corrente))
     if not os.path.exists(pasta_ano):
         os.makedirs(pasta_ano)
 
@@ -88,6 +97,7 @@ def criarDiretorios(caminhos_arquivos):
 
 def enviarPDF(caminhos_arquivos):
     global idUser
+
     url = "http://localhost/envioDocumento/backend/public/api/enviar-documento"
     
     # Criar uma lista de arquivos para enviar
@@ -189,9 +199,14 @@ def formLogin():
     botao_avancar.place(x=200, y=180)
     global idUser
 
-def enviar():
-    global caminho_arquivos
-    print
+def enviar(departamento):
+    global arquivosUpload
+    
+    if departamento == "":
+        messagebox.showerror("Erro", "Escolha um departamento")
+        return
+    
+    criarDiretorios(arquivosUpload, departamento)
    
 def atualizar_interface():
     global emailLabel, email, passwordLabel, password, botao_avancar
@@ -209,8 +224,8 @@ def atualizar_interface():
         botao_selecionar.pack(pady=20)
 
         global label
-        label = tk.Label(janela, text="Nenhum arquivo selecionado")
-        label.pack(pady=20)
+        #label = tk.Label(janela, text="Nenhum arquivo selecionado")
+        #label.pack(pady=20)
 
         label = tk.Label(janela, text="Ou arraste um arquivo aqui")
         label.pack(pady=20)
@@ -222,21 +237,21 @@ def atualizar_interface():
         label.pack(pady=20)
         departamento = StringVar()
         departamento.set( "" )
-        dep_menu = OptionMenu(janela, departamento, "FISCAL", "CONTABÍL", "PESSOAL", "SOCIETÁRIO")
-        dep_menu.place(x=160, y=250)
+        dep_menu = OptionMenu(janela, departamento, "FISCAL", "CONTABIL", "PESSOAL", "SOCIETARIO")
+        dep_menu.place(x=160, y=200)
 
-        botao_enviar_pdf = tk.Button(janela, text="ENVIAR", command=enviar)
+        botao_enviar_pdf = tk.Button(janela, text="ENVIAR", command=lambda: enviar(departamento.get()))
         botao_enviar_pdf.pack(pady=20)
-        botao_enviar_pdf.place(x=160, y=300)
+        botao_enviar_pdf.place(x=160, y=250)
         botao_enviar_pdf.configure(bg='#2771d8')
 
         botao_abrir_pasta = tk.Button(janela, text="Abrir Pasta", command=abrir_pasta)
         botao_abrir_pasta.pack(pady=20)
-        botao_abrir_pasta.place(x=160, y=350)
+        botao_abrir_pasta.place(x=160, y=300)
 
 janela = TkinterDnD.Tk()
 janela.title("Submissão de PDFs")
-janela.geometry("400x380")
+janela.geometry("400x340")
 janela.resizable(height=False, width=False)
 logado = FALSE
 
